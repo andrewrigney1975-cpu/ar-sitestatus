@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 
 const at = p => fileURLToPath(new URL(p, import.meta.url));
 const env = { ...process.env };
+// CI passes empty strings when signing secrets aren't configured; electron-builder would treat
+// an empty CSC_LINK as a path (the cwd) and fail, so drop them.
+for (const k of ['CSC_LINK', 'CSC_KEY_PASSWORD']) if (!env[k]) delete env[k];
 const pfx = at('./.signing/site-status-codesign.pfx');
 if (process.argv.includes('--win') && existsSync(pfx) && !env.CSC_LINK) {
   env.CSC_LINK = pfx;
