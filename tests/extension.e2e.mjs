@@ -22,7 +22,11 @@ const local = `http://127.0.0.1:${server.address().port}`;
 
 const browser = await puppeteer.launch({
   headless: true,
-  args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`],
+  args: [
+    `--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`,
+    // Ubuntu 23.10+ CI runners block the user namespaces Chrome's sandbox needs
+    ...(process.env.CI ? ['--no-sandbox'] : []),
+  ],
 });
 let failed = false;
 try {
