@@ -3,7 +3,7 @@
 export const STATES = {
   up:      { label: 'Operational', icon: 'i-up', rank: 0 },
   opaque:  { label: 'Reachable, status hidden', icon: 'i-opaque', rank: 1 },
-  blocked: { label: 'Can\'t check from browser', icon: 'i-blocked', rank: 1 },
+  blocked: { label: 'Can\'t be checked', icon: 'i-blocked', rank: 1 },
   slow:    { label: 'Slow response', icon: 'i-slow', rank: 2 },
   warn:    { label: 'Client error', icon: 'i-warn', rank: 3 },
   down:    { label: 'Down', icon: 'i-down', rank: 4 },

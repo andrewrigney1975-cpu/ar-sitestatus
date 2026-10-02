@@ -291,3 +291,6 @@ dialog.small { width: min(420px, calc(100vw - 24px)); }
 
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .legend i.bar { flex: none; width: 10px; height: 14px; min-width: 0; }
+label.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; }
+label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.manage-list .need-access { font-size: 12px; color: var(--st-warn); display: inline-flex; align-items: center; gap: 4px; }

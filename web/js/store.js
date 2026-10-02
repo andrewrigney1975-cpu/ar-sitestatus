@@ -1,7 +1,11 @@
 // All persistent state lives in localStorage behind this module. If storage is unavailable
 // (private mode, quota, disabled) everything keeps working in memory for the session.
+// A host can supply a localStorage-compatible backend as globalThis.siteStatusStorage; the
+// browser extension uses this to keep state in chrome.storage, shared with its background worker.
 
-const KEYS = {
+const backend = () => globalThis.siteStatusStorage ?? localStorage;
+
+export const KEYS = {
   sites: 'sitestatus.sites.v1',
   settings: 'sitestatus.settings.v1',
   history: 'sitestatus.history.v1',
@@ -9,7 +13,7 @@ const KEYS = {
 
 export const INTERVALS = [5, 10, 15, 30, 60, 120, 300, 600, 900];
 export const HISTORY_LEN = 90;
-export const DEFAULT_SETTINGS = { intervalSec: 60, theme: 'system', apiBase: '', slowMs: 2000 };
+export const DEFAULT_SETTINGS = { intervalSec: 60, theme: 'system', apiBase: '', slowMs: 2000, notify: true };
 export const EXAMPLE_SITES = [
   { name: 'Google', url: 'https://www.google.com' },
   { name: 'GitHub', url: 'https://github.com' },
@@ -22,7 +26,7 @@ let storageOk = true;
 
 function read(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = backend().getItem(key);
     return raw == null ? (memory[key] ?? fallback) : JSON.parse(raw);
   } catch {
     storageOk = false;
@@ -32,7 +36,7 @@ function read(key, fallback) {
 
 function write(key, value) {
   memory[key] = value;
-  try { localStorage.setItem(key, JSON.stringify(value)); }
+  try { backend().setItem(key, JSON.stringify(value)); }
   catch { storageOk = false; }
 }
 
@@ -74,6 +78,7 @@ class Store extends EventTarget {
     addEventListener('storage', e => {
       if (e.key === KEYS.sites) { this.#sites = read(KEYS.sites, []); this.#emit('sites'); }
       if (e.key === KEYS.settings) { this.#settings = { ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) }; this.#emit('settings'); }
+      if (e.key === KEYS.history) { this.#history = read(KEYS.history, {}); this.#emit('history', { ids: this.#sites.map(s => s.id) }); }
     });
     if (!INTERVALS.includes(this.#settings.intervalSec)) this.#settings.intervalSec = DEFAULT_SETTINGS.intervalSec;
   }

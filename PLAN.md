@@ -300,6 +300,7 @@ scripts/
 | 4. Electron | ✅ Windows and Debian built | Signed NSIS x64/arm64 installers, about 100 MB each. The amd64 `.deb` was installed on a clean Debian 12 and passes the smoke test. The macOS DMG needs a macOS runner (`.github/workflows/build.yml`). |
 | 5. Capacitor Android | ✅ APK built, not yet run on a device | Release APK 4.1 MB, signed with a self-generated keystore. Needs a test on a device or emulator; no AVD is installed on the build machine. |
 | 6. Hardening | 🟡 Partial | 18 unit tests (`npm test`). README written. Playwright end-to-end tests and an accessibility audit are still to do. |
+| 7. Sidebar extension (added 2026-10-02) | ✅ Built, tested in Chrome for Testing | `extension/` + `scripts/build-extension.mjs`. Uses the same `web/` front end with an extension host: `chrome.storage` for storage, host-permission `fetch` for checks, `webRequest` for IP/TTFB/error codes, and a background worker for 30 s alarm checks, the badge and notifications. Status codes for https, http, 4xx and 5xx targets verified. Firefox build passes `web-ext lint` but hasn't been run in Firefox. |
 
 **Build notes**
 - Android Studio's bundled JBR is JDK 25. The Gradle wrapper was raised from 8.14.3 to 9.1.0, and the Foojay toolchain resolver provides the JDK 21 that the Capacitor plugins request.

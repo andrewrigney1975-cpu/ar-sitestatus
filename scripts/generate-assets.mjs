@@ -144,4 +144,10 @@ await out('mobile/assets/icon-foreground.png', await png(iconSvg({ shape: 'none'
 await out('mobile/assets/splash.png', await sharp(Buffer.from(splashSvg({ dark: false }))).png().toBuffer());
 await out('mobile/assets/splash-dark.png', await sharp(Buffer.from(splashSvg({ dark: true }))).png().toBuffer());
 
+
+
+console.log('Browser extension (extension/icons/)');
+for (const s of [16, 32, 48, 128]) {
+  await out(`extension/icons/icon-${s}.png`, await png(s <= 48 ? smallIcon(s) : appIcon, s));
+}
 console.log('Done.');

@@ -9,6 +9,15 @@ export const electronTransport = {
   probeBatch(urls, { timeoutMs }) { return window.siteStatusNative.probeBatch(urls, { timeoutMs }); },
 };
 
+/** Browser extension: host-permission fetch isn't subject to CORS, so status codes are visible. */
+export const extensionTransport = {
+  id: 'extension',
+  label: 'Extension probe',
+  limited: false,
+  async available() { return typeof window.siteStatusHost?.probeBatch === 'function'; },
+  probeBatch(urls, { timeoutMs }) { return window.siteStatusHost.probeBatch(urls, { timeoutMs }); },
+};
+
 /** Capacitor (Android): CapacitorHttp performs the request natively. */
 const capHttp = () => window.Capacitor?.Plugins?.CapacitorHttp;
 

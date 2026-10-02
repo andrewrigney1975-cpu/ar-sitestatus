@@ -12,6 +12,7 @@ import { VERSION } from './version.js';
 const $ = id => document.getElementById(id);
 const native = window.siteStatusNative ?? null;                          // Electron preload bridge
 const cap = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins : null;
+const host = window.siteStatusHost ?? null;                              // browser extension sidebar
 
 const list = new SiteList($('sites'), $('popover'));
 const transports = new TransportManager(() => store.getSettings().apiBase);
@@ -159,7 +160,7 @@ $('install').addEventListener('click', async () => {
 addEventListener('appinstalled', () => { $('install').hidden = true; });
 
 function registerServiceWorker() {
-  if (native || cap || !('serviceWorker' in navigator) || !isSecureContext) return;
+  if (native || cap || host || !('serviceWorker' in navigator) || !isSecureContext) return;
   navigator.serviceWorker.register('sw.js').then(reg => {
     const offer = worker => toast('A new version of Site Status is available.', {
       timeout: 0,
@@ -195,7 +196,19 @@ renderBanner();
 if (!store.storageOk) toast('Storage is unavailable, so changes will only last for this session.', { timeout: 8000 });
 
 await transports.init();
-scheduler.start(store.getSettings().intervalSec);
+if (host?.onLeaderChange) {
+  // Several sidebars (one per window) may be open; only the one the background elects runs checks
+  // so they never write history concurrently. The others follow along through storage events.
+  host.onLeaderChange(leader => {
+    if (leader) scheduler.start(store.getSettings().intervalSec);
+    else scheduler.stop();
+    renderMeta();
+  });
+  // New site access was granted: check straight away instead of waiting for the next tick
+  addEventListener('sitestatus:access', () => scheduler.runNow());
+} else {
+  scheduler.start(store.getSettings().intervalSec);
+}
 registerServiceWorker();
 cap?.SplashScreen?.hide?.();
 if (new URLSearchParams(location.search).get('action') === 'manage') openSites();

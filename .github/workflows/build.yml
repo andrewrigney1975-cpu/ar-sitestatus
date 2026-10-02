@@ -90,3 +90,20 @@ jobs:
         with:
           name: android-apk
           path: mobile/android/app/build/outputs/apk/release/*.apk
+
+  extension:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: npm ci
+      - run: node scripts/build-extension.mjs --test
+      - run: npx -y web-ext@latest lint --source-dir dist/extension/firefox --warnings-as-errors
+      - run: npx puppeteer browsers install chrome
+      - run: node tests/extension.e2e.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-extension
+          path: dist/extension/*.zip

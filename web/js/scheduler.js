@@ -31,6 +31,14 @@ export class Scheduler extends EventTarget {
     this.runNow();
   }
 
+  /** Stops scheduling (an in-flight tick still completes). */
+  stop() {
+    this.#started = false;
+    this.#again = false;
+    clearTimeout(this.#timer);
+    this.#nextAt = null;
+  }
+
   setInterval(intervalSec) {
     this.#intervalSec = intervalSec;
     if (!this.#started) return;
@@ -59,7 +67,7 @@ export class Scheduler extends EventTarget {
 
   #plan(at) {
     clearTimeout(this.#timer);
-    if (this.#running) return;
+    if (this.#running || !this.#started) return;
     this.#nextAt = Math.max(at, Date.now());
     this.#timer = setTimeout(() => this.runNow(), this.#nextAt - Date.now());
   }

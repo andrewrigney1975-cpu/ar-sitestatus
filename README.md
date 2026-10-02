@@ -7,6 +7,7 @@ One vanilla HTML/JS/CSS front end ships as:
 - a **PWA** served by a small Node API in Docker
 - a **desktop app** (Electron) for Windows, macOS and Debian/Ubuntu
 - an **Android app** (Capacitor)
+- a **browser sidebar extension** for Chrome, Edge and Firefox, which needs no server
 
 ## How checks are made
 
@@ -15,6 +16,7 @@ One vanilla HTML/JS/CSS front end ships as:
 | Desktop app | Node probe engine in the Electron main process | ✅ plus DNS / connect / TLS / TTFB timings |
 | Android app | Native HTTP (`CapacitorHttp`) | ✅ |
 | Browser / PWA | The API server (`api/server.mjs`) | ✅ plus timings |
+| Sidebar extension | `fetch` from the extension, with host permission | ✅ plus server IP and approximate time to first byte |
 | Browser, API unreachable | The browser itself (`fetch` in `no-cors` mode) | ❌ CORS hides it, so a site shows only as reachable or unreachable |
 
 When the API stops answering, the web app switches to browser checks automatically. It checks the API's health every 5 minutes and switches back when the API returns. The header badge always shows which mode is active.
@@ -86,6 +88,21 @@ npm run apk            # signed release APK -> mobile/out/site-status-<version>.
 - The build uses Android Studio's bundled JDK (`jbr/`) unless `JAVA_HOME` is set. Gradle provisions the JDK 21 toolchain that some plugins require.
 - To install, copy the APK to the device and allow installs from that source. You can also use `adb install mobile/out/site-status-<version>.apk`.
 - Checks only run while the app is in the foreground.
+
+## Browser sidebar extension (no server)
+
+A Chrome/Edge side panel and a Firefox sidebar, built from the same `web/` front end. The extension's own requests aren't subject to CORS for sites it has permission to access, so it shows **real HTTP status codes without the API tier**. It uses Chrome's `webRequest` API to add the server IP, an approximate time to first byte, and precise network errors (DNS, TLS, refused…).
+
+```sh
+npm run build:extension      # dist/extension/{chrome,firefox}/ + .zip packages (~170 KB)
+npm run test:extension       # end-to-end test in Chrome for Testing (separate profile)
+```
+
+- **Install (Chrome / Edge / Brave):** open `chrome://extensions` (or `edge://extensions`), turn on *Developer mode*, choose *Load unpacked*, and pick `dist/extension/chrome`. Then click the toolbar button to open the side panel. To publish, upload `site-status-chrome-<version>.zip` to the Chrome Web Store (one-off $5 developer fee) or Edge Add-ons (free).
+- **Install (Firefox 140+):** for testing, use `about:debugging` → *This Firefox* → *Load Temporary Add-on*, and pick `dist/extension/firefox/manifest.json`. For permanent installs, the zip must be signed by Mozilla; uploading it as *unlisted* on addons.mozilla.org is free and gives you a signed `.xpi` to distribute yourself.
+- **Permissions:** no site access is requested at install. Adding a site asks for that site; *Settings → Allow checks on all sites* grants everything at once. Imported sites get a *Grant access* prompt.
+- **Background checks:** while the sidebar is open, checks run at the chosen interval (down to 5 s). When it's closed, the background worker keeps checking, at most every 30 s (a browser limit). The toolbar badge counts sites that are down, and notifications fire when a site goes down or recovers. You can turn notifications off in Settings.
+- **Storage:** data is kept in the extension's `chrome.storage.local`, separate from the PWA's `localStorage`. Use Export/Import to move a site list between them.
 
 ## Data
 

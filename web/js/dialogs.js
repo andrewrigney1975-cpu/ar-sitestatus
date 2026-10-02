@@ -6,6 +6,23 @@ import { toast } from './toast.js';
 
 const $ = id => document.getElementById(id);
 
+// Browser extension: per-site host permissions. Requests must happen synchronously inside a
+// click/submit handler (user gesture), so callers invoke requestAccess() before any await.
+const access = window.siteStatusHost?.access ?? null;
+function requestAccess(urls) {
+  access?.request(urls).catch(err => toast(`Couldn't request site access: ${err.message}`));
+}
+async function offerAccessFor(urls) {
+  if (!access) return;
+  const missing = await access.missing(urls);
+  if (missing.length) {
+    toast(`${missing.length} site${missing.length === 1 ? '' : 's'} need${missing.length === 1 ? 's' : ''} your permission before they can be checked.`, {
+      timeout: 0,
+      action: { label: 'Grant access', run: () => requestAccess(missing) },
+    });
+  }
+}
+
 // Native <dialog> close buttons
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) e.target.closest('dialog')?.close();
@@ -69,6 +86,22 @@ function renderManageList() {
           toast(`Removed "${site.name}"`, { action: { label: 'Undo', run: () => { undo(); renderManageList(); } } });
         })));
   }));
+  if (access) markMissingAccess(sites);
+}
+
+/** Extension: adds a "Grant access" button to sites the extension may not check yet. */
+async function markMissingAccess(sites) {
+  const missing = new Set(await access.missing(sites.map(s => s.url)));
+  const items = $('manage-list').children;
+  sites.forEach((site, i) => {
+    if (!missing.has(site.url) || !items[i]) return;
+    items[i].querySelector('.who').append(el('span', { class: 'need-access' }, icon('i-warn'), 'Needs permission'));
+    items[i].querySelector('.acts').prepend(el('button', {
+      class: 'btn small', type: 'button', text: 'Grant',
+      title: `Allow Site Status to check ${hostOf(site.url)}`,
+      onclick: () => requestAccess([site.url]),
+    }));
+  });
 }
 
 $('site-form').addEventListener('submit', e => {
@@ -76,9 +109,12 @@ $('site-form').addEventListener('submit', e => {
   const name = $('site-name').value;
   const url = $('site-url').value;
   try {
-    if (editingId) store.updateSite(editingId, { name, url });
-    else {
+    if (editingId) {
+      store.updateSite(editingId, { name, url });
+      requestAccess([store.getSite(editingId).url]);
+    } else {
       const site = store.addSite({ name, url });
+      requestAccess([site.url]);
       toast(`Added "${site.name}"`);
     }
     resetForm();
@@ -131,10 +167,13 @@ export async function importSites() {
   const { added, skipped } = store.importSites(parsed.sites, mode);
   renderManageList();
   toast(`Imported ${added} site${added === 1 ? '' : 's'}${skipped ? `, skipped ${skipped} duplicate${skipped === 1 ? '' : 's'}` : ''}.`);
+  // The file picker's change event isn't a user gesture, so access is offered via a toast button
+  offerAccessFor(store.getSites().map(s => s.url));
 }
 
 export function addExamples() {
   const { added } = store.importSites(EXAMPLE_SITES, 'merge');
+  requestAccess(EXAMPLE_SITES.map(s => s.url));
   toast(`Added ${added} example site${added === 1 ? '' : 's'}.`);
 }
 
@@ -149,12 +188,21 @@ export function openSettings({ transports, version }) {
   $('api-base').value = s.apiBase;
   // The API setting is irrelevant when a native probe is in use
   $('api-field').hidden = transports.isNative;
+  $('access-field').hidden = !access;
+  const host = window.siteStatusHost;
+  $('notify-field').hidden = !host?.notifications;
+  $('notify').checked = s.notify !== false;
+  if (host?.minBackgroundSec) {
+    $('background-hint').textContent = 'While the sidebar is closed, sites are still checked in the background, '
+      + `at most every ${host.minBackgroundSec} s (a browser limit).`;
+  }
 
   const t = transports.current;
   const about = [
     ['Version', version],
     ['Checks run by', t ? t.label : '—'],
-    ['Storage', store.storageOk ? 'Saved in this browser (localStorage)' : 'Unavailable: changes last only for this session'],
+    ['Storage', host ? 'Saved in the browser extension\'s storage'
+      : store.storageOk ? 'Saved in this browser (localStorage)' : 'Unavailable: changes last only for this session'],
   ];
   $('about').replaceChildren(...about.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]));
   $('settings-dialog').showModal();
@@ -183,8 +231,15 @@ export function wireSettings({ transports }) {
     btn.textContent = 'Test';
     toast(ok ? 'API server is reachable.' : 'Couldn\'t reach the API server at that address.');
   });
+  $('notify').addEventListener('change', () => store.setSettings({ notify: $('notify').checked }));
+  $('access-all').addEventListener('click', () => {
+    access?.requestAll().then(ok => toast(ok ? 'Site Status can now check any site.' : 'Access to all sites wasn\'t granted.'));
+  });
   $('clear-history').addEventListener('click', () => {
     store.clearHistory();
     toast('Check history cleared.');
   });
 }
+
+// Extension: refresh the "Needs permission" markers when access is granted elsewhere
+addEventListener('sitestatus:access', () => { if ($('sites-dialog').open) renderManageList(); });

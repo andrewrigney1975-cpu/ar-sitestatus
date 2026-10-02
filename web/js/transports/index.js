@@ -1,6 +1,6 @@
 // Picks the best available transport (native > hosted API > browser) and handles failover:
 // two consecutive API failures demote to the browser; a periodic health check promotes back.
-import { electronTransport, capacitorTransport } from './native.js';
+import { electronTransport, capacitorTransport, extensionTransport } from './native.js';
 import { createApiTransport } from './api.js';
 import { browserTransport } from './browser.js';
 
@@ -19,12 +19,12 @@ export class TransportManager extends EventTarget {
   }
 
   get current() { return this.#current; }
-  get isNative() { return this.#current === electronTransport || this.#current === capacitorTransport; }
+  get isNative() { return [electronTransport, capacitorTransport, extensionTransport].includes(this.#current); }
 
   async init() {
     clearInterval(this.#recheckTimer);
     this.#failures = 0;
-    for (const t of [electronTransport, capacitorTransport]) {
+    for (const t of [electronTransport, capacitorTransport, extensionTransport]) {
       if (await t.available()) return this.#set(t);
     }
     this.#set(await this.#api.available() ? this.#api : browserTransport);

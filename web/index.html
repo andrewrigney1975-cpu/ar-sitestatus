@@ -108,7 +108,7 @@
       <span><i class="bar b-warn"></i>4xx</span>
       <span><i class="bar b-down"></i>Down</span>
       <span><i class="bar b-opaque"></i>Reachable, status hidden</span>
-      <span><i class="bar b-blocked"></i>Can't check from browser</span>
+      <span><i class="bar b-blocked"></i>Can't be checked</span>
       <span><i class="bar b-empty"></i>No data</span>
     </div>
   </main>
@@ -193,6 +193,16 @@
             <button class="btn" id="api-test" type="button">Test</button>
           </div>
           <p class="hint" id="api-hint">Leave blank to use the server this page was loaded from. If the API can't be reached, checks fall back to the browser, which can't see HTTP status codes because of CORS.</p>
+        </div>
+        <!-- Browser extension only -->
+        <div class="field" id="access-field" hidden>
+          <label>Site access</label>
+          <div class="row"><button class="btn" id="access-all" type="button">Allow checks on all sites</button></div>
+          <p class="hint">The extension needs your permission for each site it checks. You can grant access to all sites once here, or site by site when you add them.</p>
+        </div>
+        <div class="field" id="notify-field" hidden>
+          <label class="check"><input type="checkbox" id="notify"> Notify me when a site goes down or recovers</label>
+          <p class="hint" id="background-hint"></p>
         </div>
         <div class="field">
           <label>History</label>

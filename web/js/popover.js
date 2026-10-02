@@ -7,6 +7,7 @@ const TRANSPORT_NAMES = {
   server: 'Server (API)',
   electron: 'Desktop (native)',
   native: 'Android (native)',
+  extension: 'Browser extension',
   browser: 'Browser (limited by CORS)',
 };
 
@@ -78,6 +79,7 @@ export function detailsFor(site, result, slowMs) {
     .map(([k, v]) => el('span', { text: `${k} ${fmtMs(v)}` }));
   if (parts.length) row('Breakdown', el('span', { class: 'breakdown' }, ...parts));
   if (result.method) row('Method', result.method);
+  if (result.ip) row('Server IP', result.ip);
   if (result.redirects) row('Redirects', `${result.redirects} → ${result.finalUrl}`);
   row('Checked by', TRANSPORT_NAMES[result.transport] ?? result.transport);
   nodes.push(dl);

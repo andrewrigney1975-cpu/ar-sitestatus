@@ -9,9 +9,12 @@
     "fonts": "node scripts/fetch-fonts.mjs",
     "build:web": "node scripts/build-web.mjs",
     "start": "node api/server.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "build:extension": "node scripts/build-extension.mjs",
+    "test:extension": "node scripts/build-extension.mjs --test && node tests/extension.e2e.mjs"
   },
   "devDependencies": {
+    "puppeteer": "^25.12.0",
     "sharp": "^0.35.5"
   },
   "license": "MIT",
