@@ -21,4 +21,11 @@ const run = (cmd, args) => {
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
 run('node', ['sync.mjs']);
-run('npx', ['electron-builder', ...process.argv.slice(2)]);
+const args = process.argv.slice(2);
+if (args.includes('--win')) {
+  // One pass per architecture: a single NSIS pass with several archs also emits a combined
+  // x64+arm64 installer (twice the size) that nobody needs.
+  for (const arch of ['--x64', '--arm64']) run('npx', ['electron-builder', ...args, arch]);
+} else {
+  run('npx', ['electron-builder', ...args]);
+}
