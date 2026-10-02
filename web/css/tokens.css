@@ -1,0 +1,96 @@
+/* Design tokens. Light is the default; dark comes from the system preference unless the user
+   picked an explicit theme (data-theme on <html>). Status colours are validated for colour-blind
+   separation in both modes and are always paired with an icon and label. */
+:root {
+  color-scheme: light dark;
+
+  --font: "Google Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgb(15 23 42 / .06), 0 4px 16px rgb(15 23 42 / .06);
+  --shadow-pop: 0 8px 32px rgb(15 23 42 / .18), 0 2px 6px rgb(15 23 42 / .10);
+  --bar-h: 34px;
+  --bar-gap: 2px;
+
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --border: #dde3ec;
+  --text: #111a2b;
+  --text-2: #3f4a5c;
+  --muted: #687386;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e0f2ef;
+  --focus: #1769e0;
+
+  --st-up: #16a05d;
+  --st-slow: #e8a800;
+  --st-warn: #e8662a;
+  --st-down: #b8213a;
+  --st-opaque: #5b6f94;
+  --st-blocked: #9aa3b2;
+  --st-empty: #e3e7ee;
+  --banner-ok: #e7f6ee;
+  --banner-warn: #fdf4dc;
+  --banner-down: #fbe8eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 16px rgb(0 0 0 / .25);
+    --shadow-pop: 0 8px 32px rgb(0 0 0 / .55), 0 2px 6px rgb(0 0 0 / .4);
+    --bg: #0b111c;
+    --surface: #151d2b;
+    --surface-2: #1c2636;
+    --border: #2a3547;
+    --text: #e8edf5;
+    --text-2: #c0c9d6;
+    --muted: #8a95a8;
+    --accent: #2dd4bf;
+    --accent-ink: #062521;
+    --accent-soft: #123a37;
+    --focus: #6ea8ff;
+
+    --st-up: #34d391;
+    --st-slow: #f7d04a;
+    --st-warn: #fb7c3c;
+    --st-down: #e5304a;
+    --st-opaque: #7d8fb3;
+    --st-blocked: #4a5568;
+    --st-empty: #263042;
+    --banner-ok: #0f2a20;
+    --banner-warn: #2e2610;
+    --banner-down: #33141b;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 16px rgb(0 0 0 / .25);
+  --shadow-pop: 0 8px 32px rgb(0 0 0 / .55), 0 2px 6px rgb(0 0 0 / .4);
+  --bg: #0b111c;
+  --surface: #151d2b;
+  --surface-2: #1c2636;
+  --border: #2a3547;
+  --text: #e8edf5;
+  --text-2: #c0c9d6;
+  --muted: #8a95a8;
+  --accent: #2dd4bf;
+  --accent-ink: #062521;
+  --accent-soft: #123a37;
+  --focus: #6ea8ff;
+
+  --st-up: #34d391;
+  --st-slow: #f7d04a;
+  --st-warn: #fb7c3c;
+  --st-down: #e5304a;
+  --st-opaque: #7d8fb3;
+  --st-blocked: #4a5568;
+  --st-empty: #263042;
+  --banner-ok: #0f2a20;
+  --banner-warn: #2e2610;
+  --banner-down: #33141b;
+}
+
+:root[data-theme="light"] { color-scheme: light; }

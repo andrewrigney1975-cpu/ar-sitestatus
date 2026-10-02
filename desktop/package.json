@@ -1,0 +1,119 @@
+{
+  "name": "site-status-desktop",
+  "productName": "Site Status",
+  "version": "0.1.0",
+  "description": "Lightweight site heartbeat / status monitor",
+  "author": "Andrew Rigney <andrewrigney1975@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "sync": "node sync.mjs",
+    "start": "npm run sync && electron .",
+    "dist:win": "node dist.mjs --win",
+    "dist:mac": "node dist.mjs --mac",
+    "dist:linux": "node dist.mjs --linux"
+  },
+  "build": {
+    "appId": "io.sitestatus.desktop",
+    "productName": "Site Status",
+    "copyright": "Copyright © 2026 Andrew Rigney",
+    "directories": {
+      "buildResources": "build",
+      "output": "out"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "package.json",
+      "web/**/*",
+      "shared/**/*",
+      "build/icon.png",
+      "build/icon.ico"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Site-Status-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Site Status"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon-macos.png",
+      "category": "public.app-category.developer-tools",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "Site-Status-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icons",
+      "category": "Utility",
+      "synopsis": "Site heartbeat / status monitor",
+      "maintainer": "Andrew Rigney <andrewrigney1975@gmail.com>",
+      "artifactName": "site-status_${version}_${arch}.${ext}",
+      "syncDesktopName": true,
+      "executableName": "site-status"
+    },
+    "deb": {
+      "packageName": "site-status",
+      "depends": [
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1",
+        "libdrm2",
+        "libxkbcommon0",
+        "libxrandr2"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "homepage": "https://github.com/andrewrigney1975-cpu/ar-sitestatus",
+  "desktopName": "site-status.desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrewrigney1975-cpu/ar-sitestatus.git"
+  }
+}

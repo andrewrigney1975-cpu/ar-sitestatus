@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+dist
+out
+desktop
+mobile
+assets
+scripts
+.git
+*.md

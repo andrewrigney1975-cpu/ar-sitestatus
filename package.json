@@ -1,0 +1,24 @@
+{
+  "name": "site-status",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight site heartbeat / status monitor (PWA, Electron, Capacitor)",
+  "type": "module",
+  "scripts": {
+    "assets": "node scripts/generate-assets.mjs",
+    "fonts": "node scripts/fetch-fonts.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "start": "node api/server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  },
+  "license": "MIT",
+  "author": "Andrew Rigney",
+  "homepage": "https://github.com/andrewrigney1975-cpu/ar-sitestatus",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrewrigney1975-cpu/ar-sitestatus.git"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "appId": "io.sitestatus.app",
+  "appName": "Site Status",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0b111c"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchFadeOutDuration": 200,
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": { "overlaysWebView": false }
+  }
+}

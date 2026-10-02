@@ -1,0 +1,23 @@
+# Local deployment:  docker compose up -d   ->  http://localhost:8080
+# localhost is a secure context, so the PWA can be installed from there.
+services:
+  site-status:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: site-status:latest
+    container_name: site-status
+    ports:
+      - "8080:8080"
+    environment:
+      # Local use: allow LAN/intranet targets. Set to "false" if the port is ever exposed
+      # beyond this machine, so the API can't be used to probe your private network.
+      ALLOW_PRIVATE: "true"
+      # Extra origins allowed to call the API (comma-separated), e.g. a dev server:
+      # CORS_ORIGINS: "http://localhost:5173"
+      # RATE_LIMIT_PER_MIN: "1200"
+      # ALLOWED_PORTS: "*"
+    # Lets checks reach services running on the Docker host via http://host.docker.internal:PORT
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
