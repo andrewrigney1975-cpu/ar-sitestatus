@@ -96,6 +96,7 @@ export class SiteList {
     const li = el('li', { class: 'site', 'data-id': site.id },
       el('div', { class: 'site-head' },
         el('div', { class: 'site-id' },
+          favicon(site.url),
           el('h3', { class: 'site-name', text: site.name }),
           el('a', { class: 'site-host', href: site.url, target: '_blank', rel: 'noopener noreferrer', text: hostOf(site.url) })),
         el('div', { class: 'site-now' }, pill, upt)),
@@ -181,6 +182,17 @@ export class SiteList {
       this.#showFor(this.#active.id, this.#active.index);
     });
   }
+}
+
+/** The site's /favicon.ico, falling back to its initial when there isn't one. */
+function favicon(url) {
+  const letter = (hostOf(url).replace(/^www\./, '')[0] ?? '?').toUpperCase();
+  const fallback = () => el('span', { class: 'site-favicon fallback', 'aria-hidden': 'true', text: letter });
+  let src;
+  try { src = new URL('/favicon.ico', url).href; } catch { return fallback(); }
+  const img = el('img', { class: 'site-favicon', src, alt: '', width: 16, height: 16, loading: 'lazy', referrerpolicy: 'no-referrer' });
+  img.addEventListener('error', () => img.replaceWith(fallback()), { once: true });
+  return img;
 }
 
 function pillText(r, state) {

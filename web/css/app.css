@@ -113,6 +113,11 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 16px calc(48px + env(saf
 .site + .site { border-top: 1px solid var(--border); }
 .site-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .site-id { min-width: 0; flex: 1 1 200px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.site-favicon { flex: none; align-self: center; width: 16px; height: 16px; margin-right: -2px; border-radius: 3px; object-fit: contain; }
+.site-favicon.fallback {
+  display: inline-grid; place-items: center; background: var(--surface-2); color: var(--muted);
+  font-size: 10px; font-weight: 500; line-height: 1;
+}
 .site-name { margin: 0; font-size: 16px; font-weight: 500; }
 .site-host { font-size: 13px; color: var(--muted); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .site-host:hover { text-decoration: underline; color: var(--text-2); }
