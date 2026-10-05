@@ -63,6 +63,7 @@ try {
     return {
       transport: document.getElementById('transport').textContent,
       banner: document.getElementById('banner-text').textContent,
+      alerts: [...document.querySelectorAll('.site .alert-btn:not([hidden])')].length,
       results: store.getSites().map(s => {
         const r = store.getHistory(s.id).at(-1);
         return { name: s.name, status: r?.status, error: r?.error, ip: r?.ip, ttfb: r?.timings?.ttfb, total: r?.timings?.total, transport: r?.transport };
@@ -70,7 +71,7 @@ try {
     };
   });
   console.table(state.results);
-  console.log('transport:', state.transport, '| banner:', state.banner);
+  console.log('transport:', state.transport, '| banner:', state.banner, '| alerts:', state.alerts);
   if (shot) await page.screenshot({ path: shot, fullPage: true });
 
   const by = name => state.results.find(r => r.name === name);
@@ -83,14 +84,16 @@ try {
   assert.equal(by('Bad DNS').status, null);
   assert.equal(by('Expired TLS').status, null);
   assert.ok(state.results.every(r => r.transport === 'extension'));
+  assert.equal(state.alerts, 3, 'an outage alert per down site');
   assert.deepEqual(errors, [], 'page errors');
 
   const badge = await sw.evaluate(() => chrome.action.getBadgeText({}));
   console.log('badge with sidebar open:', JSON.stringify(badge));
   assert.equal(badge, '3', 'badge counts down sites (503, DNS, TLS)');
 
-  // Close the sidebar: the background worker must take over checks
+  // Close the sidebar: the background worker must take over checks (and raise alerts)
   const before = await sw.evaluate(async () => {
+    await chrome.storage.local.set({ 'sitestatus.alerts.v1': '{}' });
     const h = JSON.parse((await chrome.storage.local.get('sitestatus.history.v1'))['sitestatus.history.v1']);
     return Object.values(h).reduce((n, l) => n + l.length, 0);
   });
@@ -103,6 +106,10 @@ try {
   });
   console.log(`background run: history ${before} -> ${after} checks`);
   assert.equal(after - before, sites.length);
+  const alerts = await sw.evaluate(async () =>
+    Object.keys(JSON.parse((await chrome.storage.local.get('sitestatus.alerts.v1'))['sitestatus.alerts.v1'])).length);
+  console.log('alerts raised by background run:', alerts);
+  assert.equal(alerts, 3);
   const alarm = await sw.evaluate(() => chrome.alarms.get('tick'));
   console.log('alarm period (min):', alarm?.periodInMinutes);
   assert.equal(alarm?.periodInMinutes, 1);

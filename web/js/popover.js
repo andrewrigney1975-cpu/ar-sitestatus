@@ -1,7 +1,9 @@
 // A single, reused popover for check details. Uses the native Popover API (top layer, escapes
 // overflow) with a class-based fallback; positioned in JS and flipped at viewport edges.
+// An interactive popover (the outage alert) takes clicks and closes on an outside press, Escape
+// or when focus leaves it.
 import { STATES, classify } from './classify.js';
-import { el, icon, fmtLocal, fmtUtc, fmtMs } from './format.js';
+import { el, icon, fmtLocal, fmtUtc, fmtMs, fmtTime } from './format.js';
 
 const TRANSPORT_NAMES = {
   server: 'Server (API)',
@@ -17,16 +19,37 @@ export class Popover {
   #el;
   #anchor = null;
 
-  constructor(node) {
+  constructor(node, { interactive = false } = {}) {
     this.#el = node;
     addEventListener('scroll', () => this.#anchor && this.#place(), { passive: true, capture: true });
     addEventListener('resize', () => this.hide());
+    if (!interactive) return;
+    node.classList.add('interactive');
+    document.addEventListener('pointerdown', e => {
+      if (this.#anchor && !node.contains(e.target) && !this.#anchor.contains(e.target)) this.hide();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape' || !this.#anchor) return;
+      const anchor = this.#anchor;
+      const refocus = node.contains(document.activeElement);
+      this.hide();
+      if (refocus) anchor.focus();
+    });
+    node.addEventListener('focusout', e => {
+      if (this.#anchor && !node.contains(e.relatedTarget) && !this.#anchor.contains(e.relatedTarget)) this.hide();
+    });
   }
 
   get anchor() { return this.#anchor; }
 
+  contains(node) { return this.#el.contains(node); }
+
+  focusFirst() { this.#el.querySelector('button, [href], [tabindex]')?.focus({ preventScroll: true }); }
+
   show(anchor, content) {
+    if (this.#anchor !== anchor) this.#expanded(false);
     this.#anchor = anchor;
+    this.#expanded(true);
     this.#el.replaceChildren(...content);
     if (supportsPopover) { if (!this.#el.matches(':popover-open')) this.#el.showPopover(); }
     else this.#el.classList.add('is-open');
@@ -35,9 +58,14 @@ export class Popover {
 
   hide() {
     if (!this.#anchor) return;
+    this.#expanded(false);
     this.#anchor = null;
     if (supportsPopover) { if (this.#el.matches(':popover-open')) this.#el.hidePopover(); }
     else this.#el.classList.remove('is-open');
+  }
+
+  #expanded(value) {
+    if (this.#anchor?.hasAttribute('aria-expanded')) this.#anchor.ariaExpanded = String(value);
   }
 
   #place() {
@@ -92,4 +120,33 @@ export function detailsFor(site, result, slowMs) {
     nodes.push(el('p', { class: 'note', text: 'Timing measured in the app and includes a few ms of bridge overhead.' }));
   }
   return nodes;
+}
+
+const causeOf = r => r?.error ?? (r?.status != null ? `HTTP ${r.status}${r.statusText ? ' ' + r.statusText : ''}` : STATES.down.label);
+
+/** Builds the outage alert popover body; onClear runs when the Clear button is pressed. */
+export function alertDetailsFor(site, alert, onClear) {
+  const ongoing = !alert.recoveredAt;
+  const dl = el('dl');
+  const row = (k, v, cls) => dl.append(el('dt', { text: k }), el('dd', { class: cls, text: v }));
+  row('Started', fmtLocal(alert.startedAt));
+  row('UTC', fmtUtc(alert.startedAt));
+  row('Cause', causeOf(alert.first), 'error');
+  if (alert.downChecks > 1) {
+    row('Failed checks', String(alert.downChecks));
+    row('Last failure', fmtLocal(alert.latest.checkedAt));
+    if (causeOf(alert.latest) !== causeOf(alert.first)) row('Latest error', causeOf(alert.latest), 'error');
+  }
+  if (!ongoing) row('Recovered', fmtLocal(alert.recoveredAt));
+
+  return [
+    el('h4', { text: `Outage: ${site.name}` }),
+    el('div', { class: 'url', text: site.url }),
+    ongoing
+      ? el('div', { class: 'status st-down' }, icon('i-down'), el('span', { text: 'Still down' }))
+      : el('div', { class: 'status st-up' }, icon('i-up'), el('span', { text: `Recovered at ${fmtTime(new Date(alert.recoveredAt))}` })),
+    dl,
+    el('div', { class: 'popover-actions' },
+      el('button', { class: 'btn small primary', type: 'button', 'data-clear-alert': true, onclick: onClear, text: 'Clear alert' })),
+  ];
 }

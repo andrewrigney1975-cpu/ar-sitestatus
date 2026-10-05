@@ -14,7 +14,7 @@ const native = window.siteStatusNative ?? null;                          // Elec
 const cap = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins : null;
 const host = window.siteStatusHost ?? null;                              // browser extension sidebar
 
-const list = new SiteList($('sites'), $('popover'));
+const list = new SiteList($('sites'), $('popover'), $('alert-popover'));
 const transports = new TransportManager(() => store.getSettings().apiBase);
 
 // ------------------------------------------------------------------ checks
@@ -128,6 +128,8 @@ store.addEventListener('change', ({ detail }) => {
   } else if (detail.what === 'history') {
     for (const id of detail.ids) list.update(id);
     renderBanner();
+  } else if (detail.what === 'alerts') {
+    for (const id of detail.ids) list.updateAlert(id);
   } else if (detail.what === 'settings') {
     const keys = detail.keys ?? ['theme', 'intervalSec', 'apiBase', 'slowMs'];
     const s = store.getSettings();

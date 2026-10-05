@@ -1,9 +1,10 @@
 // Renders the site rows: header (name, current state, uptime) and the status-page bar strip.
-// Hover, tap and keyboard all drive the same popover.
+// Hover, tap and keyboard all drive the same popover. An outage alert adds a button to the
+// card's top right that opens its own (interactive) popover.
 import { store, HISTORY_LEN } from './store.js';
 import { STATES, classify, uptime } from './classify.js';
 import { el, icon, fmtMs, fmtPct, hostOf } from './format.js';
-import { Popover, detailsFor } from './popover.js';
+import { Popover, detailsFor, alertDetailsFor } from './popover.js';
 
 const MIN_BAR = 5;
 const GAP = 2;
@@ -19,14 +20,16 @@ function relTime(iso) {
 export class SiteList {
   #ul;
   #popover;
+  #alertPopover;
   #barCount = HISTORY_LEN;
-  #rows = new Map();          // siteId -> { li, pill, uptime, strip, axisLeft }
+  #rows = new Map();          // siteId -> { li, pill, uptime, strip, axisLeft, alertBtn }
   #active = null;             // { id, index } for keyboard navigation
   #shown = null;              // { id, index } of the bar the popover points at
 
-  constructor(ul, popoverNode) {
+  constructor(ul, popoverNode, alertNode) {
     this.#ul = ul;
     this.#popover = new Popover(popoverNode);
+    this.#alertPopover = new Popover(alertNode, { interactive: true });
 
     new ResizeObserver(() => {
       const width = this.#ul.clientWidth - 40;
@@ -40,13 +43,49 @@ export class SiteList {
   /** Full rebuild: used when sites are added, removed, renamed or reordered. */
   render() {
     this.#popover.hide();
+    this.#alertPopover.hide();
     this.#rows.clear();
     const items = store.getSites().map(site => this.#buildRow(site));
     this.#ul.replaceChildren(...items);
     this.updateAll();
+    this.updateAlerts();
   }
 
   updateAll() { for (const id of this.#rows.keys()) this.update(id); }
+
+  /** Shows, refreshes or removes one row's outage alert button. */
+  updateAlert(id) {
+    const row = this.#rows.get(id);
+    if (!row) return;
+    const alert = store.getAlert(id);
+    const btn = row.alertBtn;
+    btn.hidden = !alert;
+    row.li.classList.toggle('has-alert', !!alert);
+    const open = this.#alertPopover.anchor === btn;
+    if (!alert) {
+      if (open) {
+        const refocus = this.#alertPopover.contains(document.activeElement);
+        this.#alertPopover.hide();
+        if (refocus) row.strip.focus();
+      }
+      return;
+    }
+    btn.classList.toggle('ongoing', !alert.recoveredAt);
+    btn.title = btn.ariaLabel = `Outage alert for ${store.getSite(id)?.name}${alert.recoveredAt ? ' (recovered)' : ''}: show details`;
+    if (open) this.#showAlert(id, { focus: false });
+  }
+
+  updateAlerts() { for (const id of this.#rows.keys()) this.updateAlert(id); }
+
+  #showAlert(id, { focus = true } = {}) {
+    const row = this.#rows.get(id);
+    const site = store.getSite(id);
+    const alert = store.getAlert(id);
+    if (!row || !site || !alert) return;
+    this.#popover.hide();
+    this.#alertPopover.show(row.alertBtn, alertDetailsFor(site, alert, () => store.clearAlert(id)));
+    if (focus) this.#alertPopover.focusFirst();
+  }
 
   /** Re-renders one row's current state, uptime and strip. */
   update(id) {
@@ -93,7 +132,9 @@ export class SiteList {
     const upt = el('span', { class: 'uptime' });
     const strip = el('div', { class: 'strip', tabindex: '0', role: 'group', 'data-id': site.id });
     const axisLeft = el('span');
+    const alertBtn = el('button', { class: 'alert-btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'data-id': site.id }, icon('i-alert'));
     const li = el('li', { class: 'site', 'data-id': site.id },
+      alertBtn,
       el('div', { class: 'site-head' },
         el('div', { class: 'site-id' },
           favicon(site.url),
@@ -102,7 +143,7 @@ export class SiteList {
         el('div', { class: 'site-now' }, pill, upt)),
       strip,
       el('div', { class: 'strip-axis', 'aria-hidden': 'true' }, axisLeft, el('span', { class: 'line' }), el('span', { text: 'Now' })));
-    this.#rows.set(site.id, { li, pill, uptime: upt, strip, axisLeft });
+    this.#rows.set(site.id, { li, pill, uptime: upt, strip, axisLeft, alertBtn });
     return li;
   }
 
@@ -135,6 +176,15 @@ export class SiteList {
 
   #wireInteractions() {
     const ul = this.#ul;
+
+    // Outage alert button toggles its popover
+    ul.addEventListener('click', e => {
+      const btn = e.target.closest?.('.alert-btn');
+      if (!btn) return;
+      if (this.#alertPopover.anchor === btn) this.#alertPopover.hide();
+      else this.#showAlert(btn.dataset.id, { focus: e.detail === 0 });   // keyboard: focus the Clear button
+    });
+
     const barInfo = target => {
       const bar = target.closest?.('.bar');
       const strip = bar?.closest('.strip');

@@ -43,3 +43,27 @@ export function worstState(states) {
   }
   return worst;
 }
+
+/**
+ * Raises and updates outage alerts from new results, in place. alerts: { [siteId]: alert };
+ * entries: Array<[siteId, result]>. A "down" result opens an alert for a site that has none.
+ * Alerts never expire: they stay (marked recovered once the site answers again) until cleared.
+ * Returns the ids whose alert changed.
+ */
+export function updateAlerts(alerts, entries) {
+  const changed = [];
+  for (const [id, result] of entries) {
+    if (!result) continue;
+    const alert = alerts[id];
+    const state = classify(result, Infinity);
+    if (state === 'down') {
+      if (alert) Object.assign(alert, { latest: result, downChecks: alert.downChecks + 1, recoveredAt: null });
+      else alerts[id] = { startedAt: result.checkedAt, first: result, latest: result, downChecks: 1, recoveredAt: null };
+      changed.push(id);
+    } else if (alert && !alert.recoveredAt && state !== 'blocked') {
+      alert.recoveredAt = result.checkedAt;
+      changed.push(id);
+    }
+  }
+  return changed;
+}

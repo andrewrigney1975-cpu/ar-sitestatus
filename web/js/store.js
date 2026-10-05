@@ -3,12 +3,15 @@
 // A host can supply a localStorage-compatible backend as globalThis.siteStatusStorage; the
 // browser extension uses this to keep state in chrome.storage, shared with its background worker.
 
+import { updateAlerts } from './classify.js';
+
 const backend = () => globalThis.siteStatusStorage ?? localStorage;
 
 export const KEYS = {
   sites: 'sitestatus.sites.v1',
   settings: 'sitestatus.settings.v1',
   history: 'sitestatus.history.v1',
+  alerts: 'sitestatus.alerts.v1',
 };
 
 export const INTERVALS = [5, 10, 15, 30, 60, 120, 300, 600, 900];
@@ -71,6 +74,7 @@ class Store extends EventTarget {
   #sites = read(KEYS.sites, []);
   #settings = { ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) };
   #history = read(KEYS.history, {});
+  #alerts = read(KEYS.alerts, {});
 
   constructor() {
     super();
@@ -79,6 +83,7 @@ class Store extends EventTarget {
       if (e.key === KEYS.sites) { this.#sites = read(KEYS.sites, []); this.#emit('sites'); }
       if (e.key === KEYS.settings) { this.#settings = { ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) }; this.#emit('settings'); }
       if (e.key === KEYS.history) { this.#history = read(KEYS.history, {}); this.#emit('history', { ids: this.#sites.map(s => s.id) }); }
+      if (e.key === KEYS.alerts) { this.#alerts = read(KEYS.alerts, {}); this.#emit('alerts', { ids: this.#sites.map(s => s.id) }); }
     });
     if (!INTERVALS.includes(this.#settings.intervalSec)) this.#settings.intervalSec = DEFAULT_SETTINGS.intervalSec;
   }
@@ -125,12 +130,15 @@ class Store extends EventTarget {
     if (index < 0) return () => {};
     const [site] = this.#sites.splice(index, 1);
     const history = this.#history[id];
+    const alert = this.#alerts[id];
     delete this.#history[id];
     write(KEYS.history, this.#history);
+    if (alert) { delete this.#alerts[id]; write(KEYS.alerts, this.#alerts); }
     this.#saveSites();
     return () => {
       this.#sites.splice(Math.min(index, this.#sites.length), 0, site);
       if (history) { this.#history[id] = history; write(KEYS.history, this.#history); }
+      if (alert) { this.#alerts[id] = alert; write(KEYS.alerts, this.#alerts); }
       this.#saveSites();
     };
   }
@@ -148,7 +156,9 @@ class Store extends EventTarget {
     if (mode === 'replace') {
       this.#sites = [];
       this.#history = {};
+      this.#alerts = {};
       write(KEYS.history, this.#history);
+      write(KEYS.alerts, this.#alerts);
     }
     let added = 0, skipped = 0;
     for (const { name, url } of list) {
@@ -182,14 +192,16 @@ class Store extends EventTarget {
 
   /** results: Array<[siteId, result]>; written once per tick. */
   appendResults(results) {
+    results = results.filter(([id]) => this.getSite(id));
     for (const [id, result] of results) {
-      if (!this.getSite(id)) continue;
       const list = this.#history[id] ??= [];
       list.push(result);
       if (list.length > HISTORY_LEN) list.splice(0, list.length - HISTORY_LEN);
     }
     write(KEYS.history, this.#history);
     this.#emit('history', { ids: results.map(([id]) => id) });
+    const raised = updateAlerts(this.#alerts, results);
+    if (raised.length) { write(KEYS.alerts, this.#alerts); this.#emit('alerts', { ids: raised }); }
   }
 
   clearHistory(id) {
@@ -197,6 +209,16 @@ class Store extends EventTarget {
     else this.#history = {};
     write(KEYS.history, this.#history);
     this.#emit('history', { ids: id ? [id] : this.#sites.map(s => s.id) });
+  }
+
+  // ----- outage alerts (raised on "down" results, kept until cleared) -----
+  getAlert(id) { return this.#alerts[id] ?? null; }
+
+  clearAlert(id) {
+    if (!this.#alerts[id]) return;
+    delete this.#alerts[id];
+    write(KEYS.alerts, this.#alerts);
+    this.#emit('alerts', { ids: [id] });
   }
 }
 

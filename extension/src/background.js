@@ -2,10 +2,10 @@
 // While none is open, an alarm runs them here instead (browsers allow alarms every 30 s at
 // most). Either way, this worker keeps the toolbar badge and notifications up to date.
 import { probeBatch } from './ext/probe.js';
-import { classify, STATES } from './js/classify.js';
+import { classify, updateAlerts, STATES } from './js/classify.js';
 
 const api = globalThis.browser ?? globalThis.chrome;
-const KEYS = { sites: 'sitestatus.sites.v1', settings: 'sitestatus.settings.v1', history: 'sitestatus.history.v1' };
+const KEYS = { sites: 'sitestatus.sites.v1', settings: 'sitestatus.settings.v1', history: 'sitestatus.history.v1', alerts: 'sitestatus.alerts.v1' };
 const DEFAULTS = { intervalSec: 60, slowMs: 2000, notify: true };
 const HISTORY_LEN = 90;
 const MIN_PERIOD_MIN = 0.5;
@@ -71,13 +71,16 @@ async function tick() {
     // Re-read: the list may have changed while checks were in flight
     const history = (await read(KEYS.history)) ?? {};
     const current = new Set(((await read(KEYS.sites)) ?? []).map(s => `${s.id} ${s.url}`));
-    sites.forEach((site, i) => {
-      if (!current.has(`${site.id} ${site.url}`)) return;
-      const list = history[site.id] ??= [];
-      list.push(results[i]);
+    const entries = sites.map((site, i) => [site.id, results[i]]).filter((_, i) => current.has(`${sites[i].id} ${sites[i].url}`));
+    for (const [id, result] of entries) {
+      const list = history[id] ??= [];
+      list.push(result);
       if (list.length > HISTORY_LEN) list.splice(0, list.length - HISTORY_LEN);
-    });
-    await api.storage.local.set({ [KEYS.history]: JSON.stringify(history) });
+    }
+    const alerts = (await read(KEYS.alerts)) ?? {};
+    const update = { [KEYS.history]: JSON.stringify(history) };
+    if (updateAlerts(alerts, entries).length) update[KEYS.alerts] = JSON.stringify(alerts);
+    await api.storage.local.set(update);
   } finally {
     ticking = false;
   }

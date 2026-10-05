@@ -1,7 +1,7 @@
 // Front-end logic that doesn't need a DOM: classification, uptime, timeouts, URL handling, import.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, uptime, worstState } from '../web/js/classify.js';
+import { classify, uptime, worstState, updateAlerts } from '../web/js/classify.js';
 import { timeoutFor } from '../web/js/scheduler.js';
 
 // store.js expects browser globals; provide minimal stand-ins before importing it
@@ -85,4 +85,61 @@ test('store: add, dedupe, merge/replace import, history ring buffer, undo', () =
   store.importSites([{ name: 'only', url: 'https://only.example/' }], 'replace');
   assert.deepEqual(store.getSites().map(s => s.name), ['only']);
   assert.deepEqual(store.exportSites().sites, [{ name: 'only', url: 'https://only.example/' }]);
+});
+
+test('updateAlerts: raised on down, kept through recovery, reopened on relapse', () => {
+  const at = (n, res) => ({ ...res, checkedAt: `2026-01-01T00:00:0${n}Z` });
+  const alerts = {};
+  assert.deepEqual(updateAlerts(alerts, [['a', at(1, r(200))], ['b', at(1, r(404))]]), []);
+  assert.deepEqual(alerts, {});
+
+  assert.deepEqual(updateAlerts(alerts, [['a', at(2, r(503))]]), ['a']);
+  assert.equal(alerts.a.startedAt, '2026-01-01T00:00:02Z');
+  assert.equal(alerts.a.downChecks, 1);
+  assert.equal(alerts.a.recoveredAt, null);
+
+  updateAlerts(alerts, [['a', at(3, r(null, 10000, { error: 'Timed out' }))]]);
+  assert.equal(alerts.a.downChecks, 2);
+  assert.equal(alerts.a.first.status, 503);
+  assert.equal(alerts.a.latest.error, 'Timed out');
+
+  assert.deepEqual(updateAlerts(alerts, [['a', at(4, r(null, null, { blocked: true }))]]), []);
+  assert.deepEqual(updateAlerts(alerts, [['a', at(5, r(200))]]), ['a']);
+  assert.equal(alerts.a.recoveredAt, '2026-01-01T00:00:05Z');
+  assert.deepEqual(updateAlerts(alerts, [['a', at(6, r(200))]]), [], 'alerts do not expire or re-mark recovery');
+  assert.equal(alerts.a.startedAt, '2026-01-01T00:00:02Z');
+
+  updateAlerts(alerts, [['a', at(7, r(502))]]);
+  assert.equal(alerts.a.recoveredAt, null);
+  assert.equal(alerts.a.downChecks, 3);
+});
+
+test('store: alerts persist until cleared and follow site removal', () => {
+  const s = store.addSite({ name: 'Alerted', url: 'https://alerted.example/' });
+  const ok = { url: s.url, status: 200, timings: { total: 1 }, checkedAt: '2026-01-01T00:00:00Z' };
+  const down = { url: s.url, status: 500, timings: { total: 1 }, checkedAt: '2026-01-01T00:01:00Z' };
+  store.appendResults([[s.id, ok]]);
+  assert.equal(store.getAlert(s.id), null);
+
+  const events = [];
+  const onChange = ({ detail }) => detail.what === 'alerts' && events.push(detail.ids);
+  store.addEventListener('change', onChange);
+  store.appendResults([[s.id, down]]);
+  store.appendResults([[s.id, ok]]);
+  assert.equal(store.getAlert(s.id).startedAt, down.checkedAt);
+  assert.equal(store.getAlert(s.id).recoveredAt, ok.checkedAt);
+  assert.deepEqual(events, [[s.id], [s.id]]);
+
+  store.appendResults([['no-such-site', down]]);
+  assert.equal(store.getAlert('no-such-site'), null);
+
+  const undo = store.removeSite(s.id);
+  assert.equal(store.getAlert(s.id), null);
+  undo();
+  assert.ok(store.getAlert(s.id));
+
+  store.clearAlert(s.id);
+  assert.equal(store.getAlert(s.id), null);
+  assert.deepEqual(events.at(-1), [s.id]);
+  store.removeEventListener('change', onChange);
 });
