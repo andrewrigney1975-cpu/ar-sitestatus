@@ -96,6 +96,7 @@ A Chrome/Edge side panel and a Firefox sidebar, built from the same `web/` front
 ```sh
 npm run build:extension      # dist/extension/{chrome,firefox}/ + .zip packages (~170 KB)
 npm run build:extension -- --out <dir>   # same, written to <dir> instead
+npm run build:extension:all  # build:extension, then a local .git/hooks/build-local-extensions hook if present
 npm run test:extension       # end-to-end test in Chrome for Testing (separate profile)
 ```
 
