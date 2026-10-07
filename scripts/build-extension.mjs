@@ -2,15 +2,18 @@
 //   dist/extension/chrome/   (Chrome, Edge, Brave… side panel, MV3)
 //   dist/extension/firefox/  (Firefox sidebar, MV3)
 //   dist/extension/site-status-{chrome,firefox}-<version>.zip  (store / self-distribution uploads)
-// Flags: --test  also writes dist/extension/chrome-test with host access pre-granted, for
-//                automated tests that can't click permission prompts.
+// Flags: --test       also writes dist/extension/chrome-test with host access pre-granted, for
+//                     automated tests that can't click permission prompts.
+//        --out <dir>  writes everything to <dir> instead of dist/extension.
 import { readFile, writeFile, readdir, rm, cp, mkdir } from 'node:fs/promises';
-import { join, dirname, relative, sep } from 'node:path';
+import { join, dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outRoot = join(root, 'dist', 'extension');
+const outArg = process.argv.indexOf('--out');
+if (outArg > 0 && !process.argv[outArg + 1]) throw new Error('--out needs a directory');
+const outRoot = outArg > 0 ? resolve(process.argv[outArg + 1]) : join(root, 'dist', 'extension');
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const version = pkg.version;
 const EXCLUDE = new Set(['sw.js', 'manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/maskable-192.png', 'icons/maskable-512.png']);
