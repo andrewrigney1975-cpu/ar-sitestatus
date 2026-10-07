@@ -66,7 +66,7 @@ a { color: var(--accent); }
 .btn.small.icon-only { width: 30px; }
 .btn[disabled] { opacity: .45; cursor: default; }
 .btn.spinning .icon { animation: spin .9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(-360deg); } }
 
 .select-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
 select, input[type="text"], input[type="url"], input[type="number"] {
